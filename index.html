@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BillCalc">
+<meta name="theme-color" content="#0a0f1e">
+<title>Electricity Bill Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0f1e;
+    --surface: #111827;
+    --surface2: #1a2438;
+    --accent: #00e5ff;
+    --accent2: #7c3aed;
+    --accent3: #f59e0b;
+    --text: #f1f5f9;
+    --muted: #64748b;
+    --success: #10b981;
+    --error: #ef4444;
+    --border: rgba(255,255,255,0.07);
+    --safe-top: env(safe-area-inset-top, 20px);
+    --safe-bottom: env(safe-area-inset-bottom, 20px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    overflow-x: hidden;
+  }
+
+  body {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Glow orbs */
+  body::after {
+    content: '';
+    position: fixed;
+    top: -200px;
+    right: -100px;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 420px;
+    margin: 0 auto;
+    padding: calc(var(--safe-top) + 16px) 20px calc(var(--safe-bottom) + 24px);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding-bottom: 4px;
+  }
+
+  .header-icon {
+    width: 46px;
+    height: 46px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+    box-shadow: 0 0 24px rgba(0,229,255,0.3);
+  }
+
+  .header-text h1 {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+  }
+
+  .header-text span {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 400;
+    letter-spacing: 0.5px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* Slab tiers */
+  .tiers-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+  }
+
+  .tiers-header {
+    padding: 14px 18px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tiers-header::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  .tier-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .tier-row:last-child { border-bottom: none; }
+
+  .tier-row.active {
+    background: rgba(0,229,255,0.07);
+  }
+
+  .tier-row.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--accent);
+  }
+
+  .tier-range {
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .tier-rate {
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* Input section */
+  .input-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 20px;
+  }
+
+  .input-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .input-label::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent3);
+    box-shadow: 0 0 8px var(--accent3);
+  }
+
+  .input-wrapper {
+    position: relative;
+    margin-bottom: 16px;
+  }
+
+  .unit-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 70px 18px 20px;
+    font-size: 28px;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  .unit-input::placeholder { color: var(--muted); }
+
+  .unit-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,229,255,0.1);
+  }
+
+  .unit-badge {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    color: var(--muted);
+    background: var(--bg);
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    pointer-events: none;
+  }
+
+  /* Slider */
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .slider-label { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+  input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--surface2);
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    cursor: pointer;
+    box-shadow: 0 0 12px rgba(0,229,255,0.4);
+    border: 2px solid var(--bg);
+  }
+
+  /* Calculate button */
+  .calc-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent), #00b8d4);
+    border: none;
+    border-radius: 14px;
+    padding: 18px;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: 'Syne', sans-serif;
+    letter-spacing: 0.5px;
+    color: var(--bg);
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+    box-shadow: 0 4px 24px rgba(0,229,255,0.3);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .calc-btn:active {
+    transform: scale(0.97);
+    box-shadow: 0 2px 12px rgba(0,229,255,0.2);
+  }
+
+  /* Error */
+  .error-msg {
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 14px;
+    color: var(--error);
+    display: none;
+    animation: fadeIn 0.2s ease;
+  }
+
+  /* Results */
+  .results-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    display: none;
+    animation: slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .results-header {
+    padding: 14px 18px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .results-header::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 8px var(--success);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 13px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .result-row:last-child { border-bottom: none; }
+
+  .result-row.total {
+    background: linear-gradient(135deg, rgba(0,229,255,0.08), rgba(124,58,237,0.08));
+    padding: 18px;
+  }
+
+  .result-label {
+    font-size: 14px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .result-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 15px;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .result-row.total .result-label {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .result-row.total .result-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(0,229,255,0.4);
+  }
+
+  /* Install hint */
+  .install-hint {
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    opacity: 0.7;
+  }
+
+  .hint-icon { font-size: 16px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-icon">⚡</div>
+    <div class="header-text">
+      <h1>Bill Calculator</h1>
+      <span>BANGLADESH POWER TARIFF</span>
+    </div>
+  </div>
+
+  <!-- Tariff Slabs -->
+  <div class="tiers-card">
+    <div class="tiers-header">Tariff Slabs</div>
+    <div class="tier-row" id="tier-1">
+      <span class="tier-range">0 – 75 units</span>
+      <span class="tier-rate">৳5.26 / unit</span>
+    </div>
+    <div class="tier-row" id="tier-2">
+      <span class="tier-range">76 – 200 units</span>
+      <span class="tier-rate">৳7.20 / unit</span>
+    </div>
+    <div class="tier-row" id="tier-3">
+      <span class="tier-range">201 – 300 units</span>
+      <span class="tier-rate">৳7.59 / unit</span>
+    </div>
+    <div class="tier-row" id="tier-4">
+      <span class="tier-range">301 – 400 units</span>
+      <span class="tier-rate">৳8.02 / unit</span>
+    </div>
+  </div>
+
+  <!-- Input -->
+  <div class="input-card">
+    <div class="input-label">Enter Usage</div>
+    <div class="input-wrapper">
+      <input type="number" class="unit-input" id="unitsInput" placeholder="0" min="0" max="400" inputmode="decimal">
+      <span class="unit-badge">kWh</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">0</span>
+      <input type="range" id="unitsSlider" min="0" max="400" value="0" step="1">
+      <span class="slider-label">400</span>
+    </div>
+    <button class="calc-btn" onclick="calculate()">Calculate Bill</button>
+  </div>
+
+  <!-- Error -->
+  <div class="error-msg" id="errorMsg"></div>
+
+  <!-- Results -->
+  <div class="results-card" id="resultsCard">
+    <div class="results-header">Bill Breakdown</div>
+    <div class="result-row">
+      <span class="result-label">Usage cost</span>
+      <span class="result-value" id="rUsage">—</span>
+    </div>
+    <div class="result-row">
+      <span class="result-label">Demand charge</span>
+      <span class="result-value" id="rDemand">৳126.00</span>
+    </div>
+    <div class="result-row">
+      <span class="result-label">VAT (5%)</span>
+      <span class="result-value" id="rVat">—</span>
+    </div>
+    <div class="result-row total">
+      <span class="result-label">Total Payable</span>
+      <span class="result-value" id="rTotal">—</span>
+    </div>
+  </div>
+
+  <!-- Install hint -->
+  <div class="install-hint">
+    <span class="hint-icon">📲</span>
+    <span>Tap Share → Add to Home Screen to install</span>
+  </div>
+
+</div>
+
+<script>
+  const input = document.getElementById('unitsInput');
+  const slider = document.getElementById('unitsSlider');
+
+  // Sync input ↔ slider
+  input.addEventListener('input', () => {
+    let val = parseFloat(input.value) || 0;
+    if (val > 400) val = 400;
+    slider.value = val;
+    updateTierHighlight(val);
+  });
+
+  slider.addEventListener('input', () => {
+    input.value = slider.value;
+    updateTierHighlight(parseInt(slider.value));
+  });
+
+  function updateTierHighlight(units) {
+    document.querySelectorAll('.tier-row').forEach(r => r.classList.remove('active'));
+    if (units <= 0) return;
+    if (units <= 75) document.getElementById('tier-1').classList.add('active');
+    else if (units <= 200) document.getElementById('tier-2').classList.add('active');
+    else if (units <= 300) document.getElementById('tier-3').classList.add('active');
+    else document.getElementById('tier-4').classList.add('active');
+  }
+
+  function calculate() {
+    const errEl = document.getElementById('errorMsg');
+    const resCard = document.getElementById('resultsCard');
+    errEl.style.display = 'none';
+    resCard.style.display = 'none';
+
+    const units = parseFloat(input.value);
+
+    if (isNaN(units) || input.value === '') {
+      errEl.textContent = 'Please enter a valid unit value.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    if (units < 0) {
+      errEl.textContent = 'Invalid input. Units cannot be negative.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    if (units > 400) {
+      errEl.textContent = 'This calculator supports up to 400 units.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    let cost;
+    if (units <= 75) {
+      cost = units * 5.26;
+    } else if (units <= 200) {
+      cost = 395 + (units - 75) * 7.20;
+    } else if (units <= 300) {
+      cost = (395 + 900) + (units - 200) * 7.59;
+    } else {
+      cost = 2054 + (units - 300) * 8.02;
+    }
+
+    const demand = 126;
+    const total_cost = cost + demand;
+    const vat = total_cost * 0.05;
+    const total = total_cost + vat;
+
+    document.getElementById('rUsage').textContent = '৳' + cost.toFixed(2);
+    document.getElementById('rVat').textContent = '৳' + vat.toFixed(2);
+    document.getElementById('rTotal').textContent = '৳' + total.toFixed(2);
+
+    resCard.style.display = 'block';
+    resCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    updateTierHighlight(units);
+  }
+
+  // Allow Enter key
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
+</script>
+</body>
+</html>
